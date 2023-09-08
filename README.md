@@ -222,3 +222,52 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 }
 
 ```
+
+## Login Controller and SecurityConfig
+
+### Rest controller for handling login authroization
+
+- Create autowired instances of AuthManager, JWTHelper and UserDetailService
+- Have DTOs to handle JWTRequest and JWTResponse for login operation
+- doAuthenticate Method : This method performs authentication using Spring Security's UsernamePasswordAuthenticationToken.
+- If authentication fails (e.g., due to bad credentials), a BadCredentialsException is thrown.
+
+```
+ @PostMapping("/login")
+    public ResponseEntity<JwtResponse> login(@RequestBody JwtRequest request) {
+
+        this.doAuthenticate(request.getEmail(), request.getPassword());
+
+        UserDetails userDetails = userDetailsService.loadUserByUsername(request.getEmail());
+        String token = this.helper.generateToken(userDetails);
+
+        JwtResponse response = JwtResponse.builder()
+                .jwtToken(token)
+                .username(userDetails.getUsername()).build();
+        return new ResponseEntity<>(response, HttpStatus.OK);
+    }
+
+    private void doAuthenticate(String email, String password) {
+
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(email, password);
+        try {
+            manager.authenticate(authentication);
+        } catch (BadCredentialsException e) {
+            throw new BadCredentialsException(" Invalid Username or Password  !!");
+        }
+    }
+
+    @ExceptionHandler(BadCredentialsException.class)
+    public String exceptionHandler() {
+        return "Credentials Invalid !!";
+    }
+```
+### Create a security config class 
+
+- Create 2 autowired beans : JwtAuthenticationEntryPoint & JwtAuthenticationFilter
+-  `private JwtAuthenticationEntryPoint point;`: This line declares a private variable named point, which is an instance of a class called JwtAuthenticationEntryPoint. It seems to be used for handling authentication errors.
+
+- `private JwtAuthenticationFilter filter;`: This line injects an instance of the JwtAuthenticationFilter class into the current class. This filter is used for processing JWT (JSON Web Tokens) during authentication
+
+- The `securityFilterChain` method configures security settings for a web application using Spring Security. 
+- It disables CSRF protection, specifies that requests to "/test" require authentication while allowing unrestricted access to "/auth/login," and mandates authentication for all other requests. It also defines how authentication errors should be handled using the `JwtAuthenticationEntryPoint`, sets the session creation policy as stateless to rely on JWT tokens, and adds the `JwtAuthenticationFilter` to process JWT tokens before the standard UsernamePasswordAuthenticationFilter. This method essentially establishes the security rules and components necessary for secure authentication and authorization in the application.
