@@ -1,6 +1,11 @@
 # SpringBoot-JWT-Authentication-and-Authorization
-Springboot 3.0 JWT auth understood
 
+Hello Guys! This is a demo project created to implement Spring Security
+- Authentication is performed using JWT lib.
+- Authorization is role-based.
+- Username and Password authenticated with DB stored using CustomuserDetailService.
+- Password encoded using BCryptEncoder.
+  
 ### Depenndencies
 
 | Name                                                  | Version |
