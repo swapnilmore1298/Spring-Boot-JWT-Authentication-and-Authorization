@@ -1,0 +1,90 @@
+package com.example.LoginRegistrationJWT.Config;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.core.userdetails.User;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+
+import org.springframework.security.provisioning.JdbcUserDetailsManager;
+import javax.sql.DataSource;
+
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.provisioning.InMemoryUserDetailsManager;
+
+@Configuration
+
+class MyConfig {
+
+/* In memory authentication */
+//    @Bean
+//    public UserDetailsService userDetailsService() {
+//        UserDetails userDetails = User.builder().
+//                username("DURGESH")
+//                .password(passwordEncoder().encode("DURGESH")).roles("ADMIN").
+//                build();
+//        return new InMemoryUserDetailsManager(userDetails);
+//    }
+//    @Bean
+//    public AuthenticationManager authenticationManager(AuthenticationConfiguration builder) throws Exception {
+//        return builder.getAuthenticationManager();
+//    }
+    private final DataSource dataSource;
+
+    public MyConfig(DataSource dataSource) {
+        this.dataSource = dataSource;
+    }
+
+    @Autowired
+    private Environment env;
+    @Bean
+    public UserDetailsService userDetailsService() {
+        String schemaName = env.getProperty("spring.datasource.schemaName");
+        JdbcUserDetailsManager userDetailsManager = new JdbcUserDetailsManager(dataSource);
+
+        // Define your custom SQL queries for authentication and authorization
+        userDetailsManager.setUsersByUsernameQuery(
+                "SELECT email, password, true FROM " + schemaName + ".users WHERE email = ?");
+
+//        userDetailsManager.setAuthoritiesByUsernameQuery(
+//                "SELECT username, role FROM user_roles WHERE username = ?");
+
+        userDetailsManager.setAuthoritiesByUsernameQuery("SELECT u.email,r.name" +
+                "FROM " + schemaName + ".user_roles ur" +
+                "JOIN " + schemaName + ".users u ON ur.user_id = u.id" +
+                "JOIN " + schemaName + ".roles r ON ur.role_id = r.id" +
+                "WHERE u.email = ?");
+
+//        "SELECT u.email, r.role " +
+//                "FROM user_roles ur " +
+//                "JOIN users u ON ur.userId = u.id " +
+//                "JOIN roles r ON ur.roleId = r.id " +
+//                "WHERE u.email = ?")
+
+        return userDetailsManager;
+    }
+
+
+    @Bean
+    public PasswordEncoder passwordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+
+
+    @Bean
+    public AuthenticationManager authenticationManager(
+            AuthenticationConfiguration authenticationManagerBuilder,
+            UserDetailsService userDetailsService,
+            PasswordEncoder passwordEncoder
+    ) throws Exception {
+        authenticationManagerBuilder
+                .u(userDetailsService)
+                .passwordEncoder(passwordEncoder);
+        return authenticationManagerBuilder.build();
+    }
+}
