@@ -1,8 +1,12 @@
 package com.example.LoginRegistrationJWT.Service;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
 
+import com.example.LoginRegistrationJWT.DTO.UserMapper;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.example.LoginRegistrationJWT.DTO.UserDTO;
@@ -20,12 +24,15 @@ public class UserSvcImpl implements UserSvc {
     @Autowired
     RoleRepo roleRepo;
 
+    @Autowired
+    PasswordEncoder passwordEncoder;
+
     @Override
     public boolean newUser(UserDTO userDto) {
         User user = new User();
         user.setName(userDto.getName());
         user.setEmail(userDto.getEmail());
-        user.setPassword(userDto.getPassword());
+        user.setPassword(passwordEncoder.encode(userDto.getPassword()));
 
         Role role = roleRepo.findByName("user");
         
@@ -36,9 +43,9 @@ public class UserSvcImpl implements UserSvc {
             role = roleRepo.save(role);
         }
 
-        user.setRoles(Arrays.asList(role));
+        user.setRoles(List.of(role));
         User result = userRepo.save(user);
-        
+
         if(result != null)
             return true;
         else
@@ -51,19 +58,30 @@ public class UserSvcImpl implements UserSvc {
     }
 
     @Override
-    public boolean findByEmail(UserDTO userDTO) {
+    public boolean isUserAlreadyExists(UserDTO userDTO) {
+        return findByEmail(userDTO) != null;
+    }
+
+
+    public User findByEmail(UserDTO userDTO) {
        try{
-            User user = userRepo.findByEmail(userDTO.getEmail());
-            if(user != null){
-                return true;
-            }
-            else{
-                return false;
-            }
+            Optional<User> response = userRepo.findByEmail(userDTO.getEmail());
+           return response.orElse(null);
        }
        catch(Exception ex){
-        return false;
+        return null;
        }
     }
+
+    @Override
+    public List<UserDTO> getUsers(){
+        List <UserDTO> userDTOList = new ArrayList<>();
+        userRepo.findAll().forEach(user -> {
+            userDTOList.add(UserMapper.entityToDTO(user));
+        });
+        return userDTOList;
+    }
+
+
 
 }
