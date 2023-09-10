@@ -223,9 +223,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 ```
 
-## Login Controller and SecurityConfig
+### Login Controller and SecurityConfig
 
-### Rest controller for handling login authroization
+#### Rest controller for handling login authroization
 
 - Create autowired instances of AuthManager, JWTHelper and UserDetailService
 - Have DTOs to handle JWTRequest and JWTResponse for login operation
@@ -262,7 +262,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return "Credentials Invalid !!";
     }
 ```
-### Create a security config class 
+#### Create a security config class 
 
 - Create 2 autowired beans : JwtAuthenticationEntryPoint & JwtAuthenticationFilter
 -  `private JwtAuthenticationEntryPoint point;`: This line declares a private variable named point, which is an instance of a class called JwtAuthenticationEntryPoint. It seems to be used for handling authentication errors.
@@ -271,3 +271,45 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
 - The `securityFilterChain` method configures security settings for a web application using Spring Security. 
 - It disables CSRF protection, specifies that requests to "/test" require authentication while allowing unrestricted access to "/auth/login," and mandates authentication for all other requests. It also defines how authentication errors should be handled using the `JwtAuthenticationEntryPoint`, sets the session creation policy as stateless to rely on JWT tokens, and adds the `JwtAuthenticationFilter` to process JWT tokens before the standard UsernamePasswordAuthenticationFilter. This method essentially establishes the security rules and components necessary for secure authentication and authorization in the application.
+
+## Databased backed Authentication
+
+### Update User Entity
+
+- Implement `UserDetails` class and override all existing methods
+- update methods like isAccountNonExpired, NonLocked, etc as return true & getUsername to return the email
+- `public class User implements UserDetails`
+
+### Update SecurityConfig with `doDaoAuthenticationProvider` 
+- Autowire `userDetailService` and `passwordEncoder` to set them in DaoAuthProvider and return instance.
+  
+```
+    @Bean
+    public DaoAuthenticationProvider doDaoAuthenticationProvider(){
+        DaoAuthenticationProvider daoAuthenticationProvider = new DaoAuthenticationProvider();
+        daoAuthenticationProvider.setUserDetailsService(userDetailService);
+        daoAuthenticationProvider.setPasswordEncoder(passwordEncoder);
+        return daoAuthenticationProvider;
+    }
+```
+
+### Create CustomerUserDetailService
+
+- Implement `UserDetailService` class and override `loadUserByUsername` method to return User entity by accepting username (here email) in parameters and throw `UsernameNotFoundException`.
+  
+```
+
+@Service
+public class CustomUserDetailService implements UserDetailsService {
+
+    @Autowired
+    UserRepo userRepo;
+    @Override
+    public UserDetails loadUserByUsername(String username) throws UsernameNotFoundException {
+        User user = userRepo.findByEmail(username).orElseThrow(()-> new RuntimeException("User not Found!!"));
+        //load from database
+        return user;
+    }
+}
+
+```
